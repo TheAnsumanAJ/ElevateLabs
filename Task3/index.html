@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <title>Books CRUD Frontend</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #bbb; padding: 8px; text-align: left; }
+    th { background: #f1f1f1; }
+    button { margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Books List (CRUD)</h1>
+  <form id="bookForm">
+    <input type="hidden" id="bookId" />
+    <input type="text" id="title" placeholder="Book Title" required />
+    <input type="text" id="author" placeholder="Author" required />
+    <button type="submit">Add Book</button>
+    <button type="button" id="cancelEdit" style="display:none;">Cancel Edit</button>
+  </form>
+  <table id="booksTable">
+    <thead>
+      <tr><th>ID</th><th>Title</th><th>Author</th><th>Actions</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <script>
+    const API_URL = 'http://localhost:3000/books';
+
+    async function fetchBooks() { // GET all books
+      const res = await fetch(API_URL);
+      return res.json();
+    }
+
+    async function addBook(title, author) { // POST
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ title, author })
+      });
+      return res.json();
+    }
+
+    async function updateBook(id, title, author) { // PUT
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ title, author })
+      });
+      return res.json();
+    }
+
+    async function deleteBook(id) { // DELETE
+      await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+    }
+
+    function renderBooks(books) {
+      const tbody = document.querySelector('#booksTable tbody');
+      tbody.innerHTML = '';
+      books.forEach(book => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${book.id}</td>
+          <td>${book.title}</td>
+          <td>${book.author}</td>
+          <td>
+            <button onclick="startEdit(${book.id},'${book.title.replace(/'/g,"&#39;")}','${book.author.replace(/'/g,"&#39;")}')">Edit</button>
+            <button onclick="removeBook(${book.id})">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Initial load
+    async function load() {
+      const books = await fetchBooks();
+      renderBooks(books);
+    }
+
+    // Form handlers
+    const form = document.getElementById('bookForm');
+    const bookIdInput = document.getElementById('bookId');
+    const titleInput = document.getElementById('title');
+    const authorInput = document.getElementById('author');
+    const cancelEditBtn = document.getElementById('cancelEdit');
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const id = bookIdInput.value;
+      const title = titleInput.value;
+      const author = authorInput.value;
+      if (!title || !author) return;
+      if (id) {
+        await updateBook(id, title, author);
+      } else {
+        await addBook(title, author);
+      }
+      form.reset();
+      bookIdInput.value = '';
+      cancelEditBtn.style.display = 'none';
+      form.querySelector('button[type="submit"]').textContent = 'Add Book';
+      await load();
+    };
+
+    cancelEditBtn.onclick = () => {
+      form.reset();
+      bookIdInput.value = '';
+      cancelEditBtn.style.display = 'none';
+      form.querySelector('button[type="submit"]').textContent = 'Add Book';
+    };
+
+    window.startEdit = (id, title, author) => {
+      bookIdInput.value = id;
+      titleInput.value = title;
+      authorInput.value = author;
+      cancelEditBtn.style.display = '';
+      form.querySelector('button[type="submit"]').textContent = 'Update Book';
+    };
+
+    window.removeBook = async (id) => {
+      await deleteBook(id);
+      load();
+    };
+
+    load();
+  </script>
+</body>
+</html>
